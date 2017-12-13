@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Liquid Registrar
  *
@@ -157,7 +156,6 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
         }
 
         if(!isset($customer_id)){
-            //$email, $name, $password, $company, $address_line_1, $city, $state, $country_code, $zipcode, $tel_cc_no, $tel_no, $address_line_2=null, $address_line_3=null, $alt_tel_cc_no=null, $alt_tel_no=null, $mobile_cc_no=null, $mobile_no=null, $fax_cc_no=null, $fax_no=null
             
             $company = $params["RegistrantOrganizationName"];
             $name = $params["RegistrantFirstName"]." ".$params["RegistrantLastName"];
@@ -177,8 +175,6 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
             $alt_tel_no=null; 
             $mobile_cc_no=null;
             $mobile_no=null;
-            $fax_cc_no=null;
-            $fax_no=null;
 
             list($response, $header) = $customer->createCustomer(
                 $email, $name, $password, $company, $address_line_1, $city, $state, $country_code, $zipcode, $tel_cc_no, $tel_no, $address_line_2, $address_line_3, $alt_tel_cc_no, $alt_tel_no, $mobile_cc_no, $mobile_no, $fax_cc_no, $fax_no
@@ -205,22 +201,30 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
             $contact_ids[$type]=$response->contact_id;
         }
 
-
+        $ns = null;
+        if (isset($params['NS1'])) {
+            $nameServer=array();
+            for ($i = 1; $i <= 10; $i++) {
+                if (isset($params["NS$i"])) {
+                    $nameServer[] = $params["NS$i"]['hostname'];
+                } else {
+                    break;
+                }
+            }
+            $ns = implode(",", $nameServer);
+        }
 
         $registrant_contact_id=$contact_ids['Registrant'];
         $billing_contact_id=$contact_ids['Billing'];
         $admin_contact_id=$contact_ids['Admin'];
         $tech_contact_id=$contact_ids['Tech'];
         $invoice_option='no_invoice';
-        $years=null;
-        $ns=null;
+        $years=$params['NumYears'];
         $purchase_privacy_protection=null;
         $privacy_protection_enabled=null;
         $extra=null;
 
-        
-        $domain = new \Liquid\Client\Api\DomainsApi($apiClient);
-        
+        $domain = new \Liquid\Client\Api\DomainsApi($apiClient);        
         try{
             list($response, $header) = $contact->create($domain_name, $customer_id, $registrant_contact_id, $billing_contact_id, $admin_contact_id, $tech_contact_id, $invoice_option, $years, $ns);
 

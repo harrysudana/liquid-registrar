@@ -11,7 +11,7 @@ Tested
 Not Tested Yet
 * Domain Registration 
 
-Progress
+On Progress
 * Initiate Domain Transfer 
 * Domain Registration with ID Protect 
 * Existing Domain Importing 

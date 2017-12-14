@@ -10,12 +10,19 @@ Tested
 
 Not Tested Yet
 * Domain Registration 
+* Domain Renew
+* Initiate Domain Transfer 
 
 On Progress
-* Initiate Domain Transfer 
 * Domain Registration with ID Protect 
 * Existing Domain Importing 
 * Get / Set Auto Renew Status 
 * Get / Set DNS Records 
 * Automatically Renew Domain 
 * NameSpinner
+
+
+Donation
+[[https://github.com/harrysudana/liquid-registrar/blob/master/resource/btc.png|alt=bitcoin]]
+bitcoin : 15tEA6C3vTz6kxJPZU7gMrhUZh3cM6NWXo
+paypal : paypal.me/harrysudana

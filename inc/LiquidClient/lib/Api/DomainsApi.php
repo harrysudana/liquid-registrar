@@ -680,7 +680,6 @@ class DomainsApi
             $formParams['invoice_option'] = $this->apiClient->getSerializer()->toFormValue($invoice_option);
         }
 
-
         // for model (json/xml)
         if (isset($_tempBody)) {
             $httpBody = $_tempBody; // $_tempBody is the method argument, if present

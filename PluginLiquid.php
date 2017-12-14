@@ -135,6 +135,8 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
     {
         $userPackage = new UserPackage($params['userPackageId']);
         $orderid = $this->registerDomain($this->buildRegisterParams($userPackage,$params));
+        if(is_array($orderid))
+            return "Error : ".$orderid['message'];
         $userPackage->setCustomField("Registrar Order Id",$userPackage->getCustomField("Registrar").'-'.$orderid);
         return $userPackage->getCustomField('Domain Name') . ' has been registered.';
     }
@@ -149,37 +151,30 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
         $domain_name = strtolower($params['sld'] . '.' . $params['tld']);
         $customer_id = $this->_getCustomer($params['RegistrantEmailAddress']);
         
-        //$customer = new \Liquid\Client\Api\CustomersApi($apiClient);
-        //list($response, $header) = $customer->allCustomer(null, null, null, $params['RegistrantEmailAddress']);
-        //foreach($response as $result){
-        //    $customer_id = isset($result->customer_id) ? $result->customer_id : null;
-        //}
+        $company = $params["RegistrantOrganizationName"];
+        $name = $params["RegistrantFirstName"]." ".$params["RegistrantLastName"];
+        $address_line_1 = $params["RegistrantAddress1"];
+        $address_line_2 = null;
+        $address_line_3 = null;
+        $city = $params["RegistrantCity"];
+        $state = $params["RegistrantStateProvince"];
+        $country = $this->_getCountryName($params["RegistrantCountry"]);
+        $country_code = $params["RegistrantCountry"];
+        $zipcode = $params["RegistrantPostalCode"];
+        $email = $params["RegistrantEmailAddress"];
+        $tel_cc_no = $this->_getPhoneCode($country_code);
+        $tel_no = $this->_validatePhone($params["RegistrantPhone"]);
+        $fax_cc_no = $this->_getPhoneCode($country_code);
+        $fax_no = null;
+        $alt_tel_cc_no = null;
+        $alt_tel_no=null; 
+        $mobile_cc_no=null;
+        $mobile_no=null;
 
         if(!isset($customer_id)){
-            
-            $company = $params["RegistrantOrganizationName"];
-            $name = $params["RegistrantFirstName"]." ".$params["RegistrantLastName"];
-            $address_line_1 = $params["RegistrantAddress1"];
-            $address_line_2 = $params["RegistrantAddress2"];
-            $address_line_3 = $params["RegistrantAddress3"];
-            $city = $params["RegistrantCity"];
-            $state = $params["RegistrantStateProvince"];
-            $country = $params["RegistrantCountry"];
-            $country_code = $params["RegistrantCountryCode"];
-            $zipcode = $params["RegistrantPostalCode"];
-            $email = $params["RegistrantEmailAddress"];
-            $tel_cc_no = $this->_getPhoneCode($params["RegistrantCountryCode"]);
-            $tel_no = $this->_validatePhone($params["RegistrantPhone"]);
-            $fax_cc_no = $this->_getPhoneCode($params["RegistrantCountryCode"]);
-            $fax_no = $params["RegistrantFax"];
-            $alt_tel_no=null; 
-            $mobile_cc_no=null;
-            $mobile_no=null;
-
             list($response, $header) = $customer->createCustomer(
                 $email, $name, $password, $company, $address_line_1, $city, $state, $country_code, $zipcode, $tel_cc_no, $tel_no, $address_line_2, $address_line_3, $alt_tel_cc_no, $alt_tel_no, $mobile_cc_no, $mobile_no, $fax_cc_no, $fax_no
             );
-
             $customer_id = $response->customer_id;
         }
 
@@ -193,8 +188,8 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
         foreach (array('Registrant','Admin','Tech','Billing') as $type) {
             $eligibility_criteria = null;
             $extra = null;
-
             $contact = new \Liquid\Client\Api\ContactsApi($apiClient);
+            
             list($response, $header) = $contact->contacts(
                 $customer_id, $name, $company, $email, $address_line_1, $city, $country_code, $zipcode, $tel_cc_no, $tel_no, $address_line_2, $address_line_3, $state, $fax_cc_no, $fax_no, $eligibility_criteria, $extra
             );
@@ -226,7 +221,7 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
 
         $domain = new \Liquid\Client\Api\DomainsApi($apiClient);        
         try{
-            list($response, $header) = $contact->create($domain_name, $customer_id, $registrant_contact_id, $billing_contact_id, $admin_contact_id, $tech_contact_id, $invoice_option, $years, $ns);
+            list($response, $header) = $domain->create($domain_name, $customer_id, $registrant_contact_id, $billing_contact_id, $admin_contact_id, $tech_contact_id, $invoice_option, $years, $ns);
 
             if(isset($response->message))
                 return $response->message;
@@ -238,8 +233,8 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
             $message .= '<br>HTTP response headers: '. $e->getResponseHeaders(). "\n";
             $message .= '<br>HTTP response body: '. $e->getResponseBody(). "\n";
             $message .= '<br>HTTP status code: '. $e->getCode(). "\n";
-            CE_Lib::log(1, 'ERROR: Liquid request failed with error: ' . $message);
-            return false;
+            CE_Lib::log(4, 'ERROR: Liquid request failed with error: ' . $message);
+            return json_decode($e->getResponseBody(),true);
         }
 
     }
@@ -253,6 +248,8 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
     {
         $userPackage = new UserPackage($params['userPackageId']);
         $orderid = $this->renewDomain($this->buildRenewParams($userPackage,$params));
+        if(is_array($orderid))
+            return "Error : ".$orderid['message'];
         $userPackage->setCustomField("Registrar Order Id",$userPackage->getCustomField("Registrar").'-'.$orderid);
         return $userPackage->getCustomField('Domain Name') . ' has been renewed.';
     }
@@ -276,17 +273,17 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
 
         $domain = new \Liquid\Client\Api\DomainsApi($apiClient);
         try{
-            list($response, $header) = $domain->renew($domain_id, $years, $current_date, $invoice_option, $purchase_privacy_protection=null, $customer_id=null);
+            list($response, $header) = $domain->renew($domain_id, $years, $current_date, $invoice_option, $purchase_privacy_protection, $customer_id);
 
-            return isset($response->message) ? $response->message : $response->order_id;
+            return $response->order_id;
 
         } catch (Liquid\Client\ApiException $e) {
             $message = 'Caught exception: '. $e->getMessage(). "\n";
             $message .= '<br>HTTP response headers: '. $e->getResponseHeaders(). "\n";
             $message .= '<br>HTTP response body: '. $e->getResponseBody(). "\n";
             $message .= '<br>HTTP status code: '. $e->getCode(). "\n";
-            CE_Lib::log(1, 'ERROR: Liquid request failed with error: ' . $message);
-            return false;
+            CE_Lib::log(4, 'ERROR: Liquid request failed with error: ' . $message);
+            return json_decode($e->getResponseBody(),true);
         }
         
 
@@ -306,6 +303,9 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
     {
         $userPackage = new UserPackage($params['userPackageId']);
         $transferid = $this->initiateTransfer($this->buildTransferParams($userPackage,$params));
+        if(is_array($transferid))
+            return "Error : ".$transferid['message'];
+
         $userPackage->setCustomField("Registrar Order Id",$userPackage->getCustomField("Registrar").'-'.$transferid);
         $userPackage->setCustomField('Transfer Status', $transferid);
         return "Transfer of has been initiated.";
@@ -317,35 +317,34 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
     // >0:  Operation successfull, returns orderid
     function initiateTransfer($params)
     {
+        $apiClient = $this->_constructApiClient();
         $domain_name = strtolower($params['sld'] . '.' . $params['tld']);
-        $domainDetail = $this->_getDomainDetail($domain);
         $customer_id = $this->_getCustomer($params['RegistrantEmailAddress']);
+        
+        $company = $params["RegistrantOrganizationName"];
+        $name = $params["RegistrantFirstName"]." ".$params["RegistrantLastName"];
+        $address_line_1 = $params["RegistrantAddress1"];
+        $address_line_2 = null;
+        $address_line_3 = null;
+        $city = $params["RegistrantCity"];
+        $state = $params["RegistrantStateProvince"];
+        $country = $this->_getCountryName($params["RegistrantCountry"]);
+        $country_code = $params["RegistrantCountry"];
+        $zipcode = $params["RegistrantPostalCode"];
+        $email = $params["RegistrantEmailAddress"];
+        $tel_cc_no = $this->_getPhoneCode($country_code);
+        $tel_no = $this->_validatePhone($params["RegistrantPhone"]);
+        $fax_cc_no = $this->_getPhoneCode($country_code);
+        $fax_no = null;
+        $alt_tel_cc_no = null;
+        $alt_tel_no=null; 
+        $mobile_cc_no=null;
+        $mobile_no=null;
 
         if(!isset($customer_id)){
-            
-            $company = $params["RegistrantOrganizationName"];
-            $name = $params["RegistrantFirstName"]." ".$params["RegistrantLastName"];
-            $address_line_1 = $params["RegistrantAddress1"];
-            $address_line_2 = $params["RegistrantAddress2"];
-            $address_line_3 = $params["RegistrantAddress3"];
-            $city = $params["RegistrantCity"];
-            $state = $params["RegistrantStateProvince"];
-            $country = $params["RegistrantCountry"];
-            $country_code = $params["RegistrantCountryCode"];
-            $zipcode = $params["RegistrantPostalCode"];
-            $email = $params["RegistrantEmailAddress"];
-            $tel_cc_no = $this->_getPhoneCode($params["RegistrantCountryCode"]);
-            $tel_no = $this->_validatePhone($params["RegistrantPhone"]);
-            $fax_cc_no = $this->_getPhoneCode($params["RegistrantCountryCode"]);
-            $fax_no = $params["RegistrantFax"];
-            $alt_tel_no=null; 
-            $mobile_cc_no=null;
-            $mobile_no=null;
-
             list($response, $header) = $customer->createCustomer(
                 $email, $name, $password, $company, $address_line_1, $city, $state, $country_code, $zipcode, $tel_cc_no, $tel_no, $address_line_2, $address_line_3, $alt_tel_cc_no, $alt_tel_no, $mobile_cc_no, $mobile_no, $fax_cc_no, $fax_no
             );
-
             $customer_id = $response->customer_id;
         }
 
@@ -359,7 +358,6 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
         foreach (array('Registrant','Admin','Tech','Billing') as $type) {
             $eligibility_criteria = null;
             $extra = null;
-
             $contact = new \Liquid\Client\Api\ContactsApi($apiClient);
             list($response, $header) = $contact->contacts(
                 $customer_id, $name, $company, $email, $address_line_1, $city, $country_code, $zipcode, $tel_cc_no, $tel_no, $address_line_2, $address_line_3, $state, $fax_cc_no, $fax_no, $eligibility_criteria, $extra
@@ -373,23 +371,34 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
         $tech_contact_id=$contact_ids['Billing'];
         $invoice_option="no_invoice";
         $auth_code = $params['eppCode'];
-        $years=null;
+        $years=1;
         $ns=null;
         $extra=null;
 
+        if (isset($params['NS1'])) {
+            $nameServer=array();
+            for ($i = 1; $i <= 10; $i++) {
+                if (isset($params["NS$i"])) {
+                    $nameServer[] = $params["NS$i"]['hostname'];
+                } else {
+                    break;
+                }
+            }
+            $ns = implode(",", $nameServer);
+        }
+
         $domain = new \Liquid\Client\Api\DomainsApi($apiClient);
         try{
-            list($response, $header) = $domain->transfer($domain_name, $customer_id, $registrant_contact_id, $admin_contact_id, $billing_contact_id, $tech_contact_id, $invoice_option, $auth_code=null, $years=null, $ns=null, $extra=null);
+            list($response, $header) = $domain->transfer($domain_name, $customer_id, $registrant_contact_id, $admin_contact_id, $billing_contact_id, $tech_contact_id, $invoice_option, $auth_code, $years, $ns, $extra);
 
-            return isset($response->message) ? $response->message : $response->order_id;
-
+            return $response->order_id;
         } catch (Liquid\Client\ApiException $e) {
             $message = 'Caught exception: '. $e->getMessage(). "\n";
             $message .= '<br>HTTP response headers: '. $e->getResponseHeaders(). "\n";
             $message .= '<br>HTTP response body: '. $e->getResponseBody(). "\n";
             $message .= '<br>HTTP status code: '. $e->getCode(). "\n";
-            CE_Lib::log(1, 'ERROR: Liquid request failed with error: ' . $message);
-            return false;
+            CE_Lib::log(4, 'ERROR: Liquid request failed with error: ' . $message));
+            return json_decode($e->getResponseBody(),true);
         }
 
     }    
@@ -891,11 +900,26 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
         return $row['phone_code'];
     }
 
+    function _getCountryName($country)
+    {
+        $country_name = 'Indonesia';
+        $query = "SELECT name FROM country WHERE iso=? AND name != ''";
+        $result = $this->db->query($query, $country);
+        if (!$row = $result->fetch()) {
+            return $country_name;
+        }
+        return $row['name'];
+    }
+
     function _getCustomer($email)
     {
         $apiClient = $this->_constructApiClient();
         $customer = new \Liquid\Client\Api\CustomersApi($apiClient);
         list($response, $header) = $customer->allCustomer(null, null, null, $email);
-        return isset($result->customer_id) ? $result->customer_id : null;
+        $customer_id = null;
+        foreach ($response as $result) {
+            $customer_id = $result->customer_id;
+        }
+        return $customer_id;
     }
 }

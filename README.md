@@ -8,11 +8,11 @@ Liquid Registrar integration for Clientexec
 * Get / Set Contact Information 
 * Get / Set Registrar Lock 
 * Existing Domain Importing 
+* Initiate Domain Transfer 
 
 ## Not Tested Yet
-* Domain Registration 
+* Domain Registration
 * Domain Renew
-* Initiate Domain Transfer 
 
 ## On Progress
 * Domain Registration with ID Protect 

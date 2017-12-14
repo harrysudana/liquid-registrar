@@ -145,15 +145,15 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
     // >0:  Operation successfull, returns orderid
     function registerDomain($params)
     {
-        $domain_name = strtolower($params['sld'] . '.' . $params['tld']);
-
         $apiClient = $this->_constructApiClient();
-
-        $customer = new \Liquid\Client\Api\CustomersApi($apiClient);
-        list($response, $header) = $customer->allCustomer(null, null, null, $params['RegistrantEmailAddress']);
-        foreach($response as $result){
-            $customer_id = isset($result->customer_id) ? $result->customer_id : null;
-        }
+        $domain_name = strtolower($params['sld'] . '.' . $params['tld']);
+        $customer_id = $this->_getCustomer($params['RegistrantEmailAddress']);
+        
+        //$customer = new \Liquid\Client\Api\CustomersApi($apiClient);
+        //list($response, $header) = $customer->allCustomer(null, null, null, $params['RegistrantEmailAddress']);
+        //foreach($response as $result){
+        //    $customer_id = isset($result->customer_id) ? $result->customer_id : null;
+        //}
 
         if(!isset($customer_id)){
             
@@ -251,7 +251,10 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
      */
     function doRenew($params)
     {
-
+        $userPackage = new UserPackage($params['userPackageId']);
+        $orderid = $this->renewDomain($this->buildRenewParams($userPackage,$params));
+        $userPackage->setCustomField("Registrar Order Id",$userPackage->getCustomField("Registrar").'-'.$orderid);
+        return $userPackage->getCustomField('Domain Name') . ' has been renewed.';
     }
 
     // possible return values: array(code [,message])
@@ -260,6 +263,32 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
     // >0:  Operation successfull, returns orderid
     function renewDomain($params)
     {
+        $domain_name = strtolower($params['sld'] . '.' . $params['tld']);
+        $domainDetail = $this->_getDomainDetail($domain);
+        $apiClient = $this->_constructApiClient();
+
+        $domain_id=$domainDetail->domain_id;
+        $years=$params['NumYears'];
+        $current_date=$domainDetail->expiry_date;
+        $invoice_option='no_invoice';
+        $purchase_privacy_protection=null;
+        $customer_id=null;
+
+        $domain = new \Liquid\Client\Api\DomainsApi($apiClient);
+        try{
+            list($response, $header) = $domain->renew($domain_id, $years, $current_date, $invoice_option, $purchase_privacy_protection=null, $customer_id=null);
+
+            return isset($response->message) ? $response->message : $response->order_id;
+
+        } catch (Liquid\Client\ApiException $e) {
+            $message = 'Caught exception: '. $e->getMessage(). "\n";
+            $message .= '<br>HTTP response headers: '. $e->getResponseHeaders(). "\n";
+            $message .= '<br>HTTP response body: '. $e->getResponseBody(). "\n";
+            $message .= '<br>HTTP status code: '. $e->getCode(). "\n";
+            CE_Lib::log(1, 'ERROR: Liquid request failed with error: ' . $message);
+            return false;
+        }
+        
 
     }
 
@@ -275,7 +304,11 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
      */
     function doDomainTransferWithPopup($params)
     {
-
+        $userPackage = new UserPackage($params['userPackageId']);
+        $transferid = $this->initiateTransfer($this->buildTransferParams($userPackage,$params));
+        $userPackage->setCustomField("Registrar Order Id",$userPackage->getCustomField("Registrar").'-'.$transferid);
+        $userPackage->setCustomField('Transfer Status', $transferid);
+        return "Transfer of has been initiated.";
     }
 
     // possible return values: array(code [,message])
@@ -284,6 +317,80 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
     // >0:  Operation successfull, returns orderid
     function initiateTransfer($params)
     {
+        $domain_name = strtolower($params['sld'] . '.' . $params['tld']);
+        $domainDetail = $this->_getDomainDetail($domain);
+        $customer_id = $this->_getCustomer($params['RegistrantEmailAddress']);
+
+        if(!isset($customer_id)){
+            
+            $company = $params["RegistrantOrganizationName"];
+            $name = $params["RegistrantFirstName"]." ".$params["RegistrantLastName"];
+            $address_line_1 = $params["RegistrantAddress1"];
+            $address_line_2 = $params["RegistrantAddress2"];
+            $address_line_3 = $params["RegistrantAddress3"];
+            $city = $params["RegistrantCity"];
+            $state = $params["RegistrantStateProvince"];
+            $country = $params["RegistrantCountry"];
+            $country_code = $params["RegistrantCountryCode"];
+            $zipcode = $params["RegistrantPostalCode"];
+            $email = $params["RegistrantEmailAddress"];
+            $tel_cc_no = $this->_getPhoneCode($params["RegistrantCountryCode"]);
+            $tel_no = $this->_validatePhone($params["RegistrantPhone"]);
+            $fax_cc_no = $this->_getPhoneCode($params["RegistrantCountryCode"]);
+            $fax_no = $params["RegistrantFax"];
+            $alt_tel_no=null; 
+            $mobile_cc_no=null;
+            $mobile_no=null;
+
+            list($response, $header) = $customer->createCustomer(
+                $email, $name, $password, $company, $address_line_1, $city, $state, $country_code, $zipcode, $tel_cc_no, $tel_no, $address_line_2, $address_line_3, $alt_tel_cc_no, $alt_tel_no, $mobile_cc_no, $mobile_no, $fax_cc_no, $fax_no
+            );
+
+            $customer_id = $response->customer_id;
+        }
+
+        $contact_ids = array(
+            'Registrant'=>null,
+            'Admin'=>null, 
+            'Tech'=>null,
+            'Billing'=>null
+        );
+        
+        foreach (array('Registrant','Admin','Tech','Billing') as $type) {
+            $eligibility_criteria = null;
+            $extra = null;
+
+            $contact = new \Liquid\Client\Api\ContactsApi($apiClient);
+            list($response, $header) = $contact->contacts(
+                $customer_id, $name, $company, $email, $address_line_1, $city, $country_code, $zipcode, $tel_cc_no, $tel_no, $address_line_2, $address_line_3, $state, $fax_cc_no, $fax_no, $eligibility_criteria, $extra
+            );
+            $contact_ids[$type]=$response->contact_id;
+        }
+
+        $registrant_contact_id=$contact_ids['Registrant'];
+        $admin_contact_id=$contact_ids['Admin'];
+        $billing_contact_id=$contact_ids['Tech'];
+        $tech_contact_id=$contact_ids['Billing'];
+        $invoice_option="no_invoice";
+        $auth_code = $params['eppCode'];
+        $years=null;
+        $ns=null;
+        $extra=null;
+
+        $domain = new \Liquid\Client\Api\DomainsApi($apiClient);
+        try{
+            list($response, $header) = $domain->transfer($domain_name, $customer_id, $registrant_contact_id, $admin_contact_id, $billing_contact_id, $tech_contact_id, $invoice_option, $auth_code=null, $years=null, $ns=null, $extra=null);
+
+            return isset($response->message) ? $response->message : $response->order_id;
+
+        } catch (Liquid\Client\ApiException $e) {
+            $message = 'Caught exception: '. $e->getMessage(). "\n";
+            $message .= '<br>HTTP response headers: '. $e->getResponseHeaders(). "\n";
+            $message .= '<br>HTTP response body: '. $e->getResponseBody(). "\n";
+            $message .= '<br>HTTP status code: '. $e->getCode(). "\n";
+            CE_Lib::log(1, 'ERROR: Liquid request failed with error: ' . $message);
+            return false;
+        }
 
     }    
 
@@ -504,7 +611,43 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
 
     function fetchDomains($params)
     {
+        $apiClient = $this->_constructApiClient();
+        $domain = new \Liquid\Client\Api\DomainsApi($apiClient);
+        try{
+            //$limit=null, $page_no=null, $domain_id=null, $reseller_id=null, $customer_id=null, $show_child_orders=null, $tld=null, $status=null, $domain_name=null, $privacy_protection_enabled=null, $creation_time_start=null, $creation_time_end=null, $expiry_date_start=null, $expiry_date_end=null, $reseller_email=null, $customer_email=null, $exact_domain_name=null
+            list($response, $header) = $domain->retrieve(100);
 
+            $domainsList = array();
+            if (!isset($response->message)) {
+                foreach ($response as $domain) {
+                    //$domain = $domain['#'];
+                    $domain_name = explode('.',$domain->domain_name,2);
+                    $data['id'] = $domain->domain_id;
+                    $data['sld'] = $domain_name[0];
+                    $data['tld'] = $domain_name[1];
+                    $data['exp'] = $domain->expiry_date;
+                    $domainsList[] = $data;
+                }
+            }
+
+            $metaData = array();
+            //$metaData['total'] = $response['interface-response']['#']['GetDomains'][0]['#']['DomainCount'][0]['#'];
+            //$metaData['next'] = $response['interface-response']['#']['GetDomains'][0]['#']['NextRecords'][0]['#'];
+            //$metaData['start'] = $response['interface-response']['#']['GetDomains'][0]['#']['StartPosition'][0]['#'];
+            //$metaData['end'] = $response['interface-response']['#']['GetDomains'][0]['#']['EndPosition'][0]['#'];
+            $metaData['numPerPage'] = 25;
+            return array($domainsList, $metaData);
+
+        } catch (Liquid\Client\ApiException $e) {
+            $message = 'Caught exception: '. $e->getMessage(). "\n";
+            $message .= '<br>HTTP response headers: '. $e->getResponseHeaders(). "\n";
+            $message .= '<br>HTTP response body: '. $e->getResponseBody(). "\n";
+            $message .= '<br>HTTP status code: '. $e->getCode(). "\n";
+            CE_Lib::log(1, 'ERROR: Liquid request failed with error: ' . $message);
+            return false;
+        }
+
+        /*
     	$arguments = array(
             'queryParams' => array('limit'=>100, 'page_no'=>$params['next'], 'exact_domain_name'=>0),
 		    'formParams' => array(),
@@ -519,7 +662,7 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
 
         	}
         }
-        /*
+        
         $arguments = array(
             'command'       => 'GetDomains',
             'uid'           => $params['Login'],
@@ -528,26 +671,7 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
             'Start'         => $params['next']
         );
         $response = $this->_makeRequest($params, $arguments);
-        $domainsList = array();
-        if ($response['interface-response']['#']['GetDomains'][0]['#']['DomainCount'][0]['#'] > 0) {
-            foreach ($response['interface-response']['#']['GetDomains'][0]['#']['domain-list'][0]['#']['domain'] as $domain) {
-                $domain = $domain['#'];
-                $data['id'] = $domain['DomainNameID'][0]['#'];
-                $data['sld'] = $domain['sld'][0]['#'];
-                $data['tld'] = $domain['tld'][0]['#'];
-                $data['exp'] = isset($domain['expiration-date'][0]['#'])? $domain['expiration-date'][0]['#']: 'n/a';
-                $domainsList[] = $data;
-            }
-        }
         */
-
-        $metaData = array();
-        $metaData['total'] = $response['interface-response']['#']['GetDomains'][0]['#']['DomainCount'][0]['#'];
-        $metaData['next'] = $response['interface-response']['#']['GetDomains'][0]['#']['NextRecords'][0]['#'];
-        $metaData['start'] = $response['interface-response']['#']['GetDomains'][0]['#']['StartPosition'][0]['#'];
-        $metaData['end'] = $response['interface-response']['#']['GetDomains'][0]['#']['EndPosition'][0]['#'];
-        $metaData['numPerPage'] = 25;
-        return array($domainsList, $metaData);
     }
 
     function disablePrivateRegistration($params)
@@ -611,7 +735,6 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
         );
         $response = $this->_makeRequest('/domains/'.$domainDetail->domain_id.'/auth_code', $arguments);
         $EPPCode = $response->ResponseBody;
-        //CE_Lib::log(1, 'tes: ' . json_encode($domainDetail));
 
         $response = $this->_makeRequest('/customers/'.$contact_ids['Customer'].'/contacts/'.$domainDetail->registrant_contact_id, $arguments);
         $result = $response->ResponseBody;
@@ -659,8 +782,6 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
         		}
         	}
         }
-        
-        // records consist [{"id":"59555","hostname":"tesr.helloads.co.id","address":"\"juhhljklj\"","type":"TXT"},{"id":"1938331","hostname":"helloads.co.id","address":"ns1.liqu.id","type":"NS"},{"id":"1938332","hostname":"helloads.co.id","address":"ns2.liqu.id","type":"NS"}]
 
         $types = array('A', 'MXE', 'MX', 'CNAME', 'URL', 'FRAME', 'TXT');
         $default = false;
@@ -768,5 +889,13 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
             return $phone_code;
         }
         return $row['phone_code'];
+    }
+
+    function _getCustomer($email)
+    {
+        $apiClient = $this->_constructApiClient();
+        $customer = new \Liquid\Client\Api\CustomersApi($apiClient);
+        list($response, $header) = $customer->allCustomer(null, null, null, $email);
+        return isset($result->customer_id) ? $result->customer_id : null;
     }
 }

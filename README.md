@@ -7,6 +7,7 @@ Liquid Registrar integration for Clientexec
 * Get / Set Nameserver Records 
 * Get / Set Contact Information 
 * Get / Set Registrar Lock 
+* Existing Domain Importing 
 
 ## Not Tested Yet
 * Domain Registration 
@@ -15,7 +16,6 @@ Liquid Registrar integration for Clientexec
 
 ## On Progress
 * Domain Registration with ID Protect 
-* Existing Domain Importing 
 * Get / Set Auto Renew Status 
 * Get / Set DNS Records 
 * Automatically Renew Domain 

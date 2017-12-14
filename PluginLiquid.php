@@ -397,7 +397,7 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
             $message .= '<br>HTTP response headers: '. $e->getResponseHeaders(). "\n";
             $message .= '<br>HTTP response body: '. $e->getResponseBody(). "\n";
             $message .= '<br>HTTP status code: '. $e->getCode(). "\n";
-            CE_Lib::log(4, 'ERROR: Liquid request failed with error: ' . $message));
+            CE_Lib::log(4, 'ERROR: Liquid request failed with error: ' . $message);
             return json_decode($e->getResponseBody(),true);
         }
 

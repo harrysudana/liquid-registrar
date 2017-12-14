@@ -24,7 +24,7 @@ Liquid Registrar integration for Clientexec
 
 ## Donation
 
-![BitCoin](https://raw.githubusercontent.com/harrysudana/liquid-registrar/blob/master/resource/btc.png)
+![BitCoin](https://raw.githubusercontent.com/harrysudana/liquid-registrar/master/resource/btc.png)
 
 bitcoin : 15tEA6C3vTz6kxJPZU7gMrhUZh3cM6NWXo
 

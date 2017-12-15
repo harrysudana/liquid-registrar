@@ -1,6 +1,9 @@
 # liquid-registrar
 Liquid Registrar integration for Clientexec
 
+## Installation
+Download this and put it in plugins/registrars/ with "liquid" as the folder name
+
 ## Tested
 * TLD Lookup
 * Send Transfer Key
@@ -10,11 +13,11 @@ Liquid Registrar integration for Clientexec
 * Existing Domain Importing 
 * Initiate Domain Transfer 
 
-## Not Tested Yet
+## Complete, Not Yet Tested
 * Domain Registration
 * Domain Renew
 
-## On Progress
+## Incompelete
 * Domain Registration with ID Protect 
 * Get / Set Auto Renew Status 
 * Get / Set DNS Records 
@@ -28,4 +31,4 @@ Liquid Registrar integration for Clientexec
 
 bitcoin : 15tEA6C3vTz6kxJPZU7gMrhUZh3cM6NWXo
 
-paypal : paypal.me/harrysudana
+paypal : [paypal.me/harrysudana](https://www.paypal.me/harrysudana)

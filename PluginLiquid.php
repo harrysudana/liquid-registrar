@@ -230,8 +230,8 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
 
         } catch (Liquid\Client\ApiException $e) {
             $message = 'Caught exception: '. $e->getMessage(). "\n";
-            $message .= '<br>HTTP response headers: '. $e->getResponseHeaders(). "\n";
             $message .= '<br>HTTP response body: '. $e->getResponseBody(). "\n";
+            $message .= '<br>HTTP response headers: '. $e->getResponseHeaders(). "\n";
             $message .= '<br>HTTP status code: '. $e->getCode(). "\n";
             CE_Lib::log(4, 'ERROR: Liquid request failed with error: ' . $message);
             return json_decode($e->getResponseBody(),true);
@@ -279,8 +279,8 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
 
         } catch (Liquid\Client\ApiException $e) {
             $message = 'Caught exception: '. $e->getMessage(). "\n";
-            $message .= '<br>HTTP response headers: '. $e->getResponseHeaders(). "\n";
             $message .= '<br>HTTP response body: '. $e->getResponseBody(). "\n";
+            $message .= '<br>HTTP response headers: '. $e->getResponseHeaders(). "\n";
             $message .= '<br>HTTP status code: '. $e->getCode(). "\n";
             CE_Lib::log(4, 'ERROR: Liquid request failed with error: ' . $message);
             return json_decode($e->getResponseBody(),true);
@@ -394,8 +394,8 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
             return $response->order_id;
         } catch (Liquid\Client\ApiException $e) {
             $message = 'Caught exception: '. $e->getMessage(). "\n";
-            $message .= '<br>HTTP response headers: '. $e->getResponseHeaders(). "\n";
             $message .= '<br>HTTP response body: '. $e->getResponseBody(). "\n";
+            $message .= '<br>HTTP response headers: '. $e->getResponseHeaders(). "\n";
             $message .= '<br>HTTP status code: '. $e->getCode(). "\n";
             CE_Lib::log(4, 'ERROR: Liquid request failed with error: ' . $message);
             return json_decode($e->getResponseBody(),true);
@@ -483,7 +483,6 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
     	);
     	
     	foreach (array('Registrant') as $type) {
-
             $customer_id = $domainDetail->customer_id; 
             $contact_id = $contact_ids[$type];
             $company = $params[$type."_OrganizationName"];
@@ -529,11 +528,11 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
 
             } catch (Liquid\Client\ApiException $e) {
                 $message = 'Caught exception: '. $e->getMessage(). "\n";
-                $message .= '<br>HTTP response headers: '. $e->getResponseHeaders(). "\n";
                 $message .= '<br>HTTP response body: '. $e->getResponseBody(). "\n";
+                $message .= '<br>HTTP response headers: '. $e->getResponseHeaders(). "\n";
                 $message .= '<br>HTTP status code: '. $e->getCode(). "\n";
-                CE_Lib::log(1, 'ERROR: Liquid request failed with error: ' . $message);
-                return false;
+                CE_Lib::log(4, 'ERROR: Liquid request failed with error: ' . $message);
+                return json_decode($e->getResponseBody(),true);
             }
         }
 
@@ -604,7 +603,6 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
     {
     	$domain = strtolower($params['sld'] . '.' . $params['tld']);
     	$domainDetail = $this->_getDomainDetail($domain);
-    	//CE_Lib::log(1, 'Test: ' . json_encode($domainDetail).' '.strtotime($result->expiry_date));
     	$data = array();
     	if($domainDetail<>false){
     		$data['endtime'] = strtotime($domainDetail->expiry_date);
@@ -623,7 +621,6 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
         $apiClient = $this->_constructApiClient();
         $domain = new \Liquid\Client\Api\DomainsApi($apiClient);
         try{
-            //$limit=null, $page_no=null, $domain_id=null, $reseller_id=null, $customer_id=null, $show_child_orders=null, $tld=null, $status=null, $domain_name=null, $privacy_protection_enabled=null, $creation_time_start=null, $creation_time_end=null, $expiry_date_start=null, $expiry_date_end=null, $reseller_email=null, $customer_email=null, $exact_domain_name=null
             list($response, $header) = $domain->retrieve(100);
 
             $domainsList = array();
@@ -649,11 +646,11 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
 
         } catch (Liquid\Client\ApiException $e) {
             $message = 'Caught exception: '. $e->getMessage(). "\n";
-            $message .= '<br>HTTP response headers: '. $e->getResponseHeaders(). "\n";
             $message .= '<br>HTTP response body: '. $e->getResponseBody(). "\n";
+            $message .= '<br>HTTP response headers: '. $e->getResponseHeaders(). "\n";
             $message .= '<br>HTTP status code: '. $e->getCode(). "\n";
-            CE_Lib::log(1, 'ERROR: Liquid request failed with error: ' . $message);
-            return false;
+            CE_Lib::log(4, 'ERROR: Liquid request failed with error: ' . $message);
+            return json_decode($e->getResponseBody(),true);
         }
 
         /*
@@ -820,9 +817,9 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
 		try {
 	    	$resourcePath   = $resourcePath;
 			$method         = $method;
-			$formParams     = $arguments['formParams']; //array();
-			$headerParams   = $arguments['headerParams'];//array();
-			$queryParams = $arguments['queryParams'];//'example.com';
+			$formParams     = $arguments['formParams'];
+			$headerParams   = $arguments['headerParams'];
+			$queryParams = $arguments['queryParams'];
 
 			list($response, $header) = $apiClient->callApi(
 			    $resourcePath,
@@ -831,15 +828,14 @@ class PluginLiquid extends RegistrarPlugin implements ICanImportDomains
 			    $formParams,
 			    $headerParams
 			);
-			//CE_Lib::log(1, 'INFO: ' . $resourcePath . ">>" . $method . ">>" .json_encode($response));
 			return (object) array('ResponseBody'=>$response,'ResponseHeader'=>$header);
 		} catch (Liquid\Client\ApiException $e) {
 			$message = 'Caught exception: '. $e->getMessage(). "\n";
-	    	$message .= '<br>HTTP response headers: '. $e->getResponseHeaders(). "\n";
 	    	$message .= '<br>HTTP response body: '. $e->getResponseBody(). "\n";
+            $message .= '<br>HTTP response headers: '. $e->getResponseHeaders(). "\n";
 	    	$message .= '<br>HTTP status code: '. $e->getCode(). "\n";
-			CE_Lib::log(1, 'ERROR: Liquid request failed with error: ' . $message);
-			return false;
+			CE_Lib::log(4, 'ERROR: Liquid request failed with error: ' . $message);
+			return json_decode($e->getResponseBody(),true);
 		}
     }
 
